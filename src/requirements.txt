@@ -1,2 +1,35 @@
-fastapi==0.75.0
-uvicorn==0.17.6
+# web service (keep)
+fastapi
+uvicorn[standard]
+
+# core scientific stack
+numpy
+pandas
+scipy
+
+# ML / stats
+scikit-learn
+statsmodels
+sympy
+mpmath
+
+# plotting / viz
+matplotlib
+seaborn
+altair
+
+# CV / imaging (headless for servers)
+opencv-python-headless
+pillow
+
+# text, PDF, tables
+pdfminer.six
+reportlab
+tabulate
+striprtf
+
+# domains / extras
+python-chess
+yfinance
+lxml
+pandas-datareader
