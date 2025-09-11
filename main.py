@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import tempfile, os, subprocess, json, base64, textwrap, signal, sys
 import uvicorn
+import logging
+from firebase_config import firebase_uploader
 
 app = FastAPI(title="Python Code Execution API", version="1.0.0")
 
@@ -100,21 +102,50 @@ def execute(req: ExecRequest):
             exit_code = -1
             outcome = "OUTCOME_TIMEOUT"
         
-        # Optionally scan work dir for generated images and inline them
+        # Scan work dir for generated images and upload to Firebase
         images = []
         try:
             for root, dirs, files in os.walk(work):
                 for name in files:
                     if name.lower().endswith((".png", ".jpg", ".jpeg")):
                         p = os.path.join(root, name)
-                        with open(p, "rb") as f:
-                            images.append({
-                                "path": os.path.relpath(p, work),
-                                "mediaType": "image/png" if name.lower().endswith(".png") else "image/jpeg",
-                                "data": base64.b64encode(f.read()).decode("ascii")
-                            })
+                        
+                        # If Firebase is configured, upload to storage
+                        if firebase_uploader.is_configured():
+                            with open(p, "rb") as f:
+                                image_data = f.read()
+                                content_type = "image/png" if name.lower().endswith(".png") else "image/jpeg"
+                                
+                                # Upload to Firebase and get public URL
+                                public_url = firebase_uploader.upload_image(image_data, name, content_type)
+                                
+                                if public_url:
+                                    images.append({
+                                        "path": os.path.relpath(p, work),
+                                        "url": public_url,
+                                        "mediaType": content_type,
+                                        "storage": "firebase"
+                                    })
+                                else:
+                                    # Fallback to base64 if Firebase upload fails
+                                    images.append({
+                                        "path": os.path.relpath(p, work),
+                                        "mediaType": content_type,
+                                        "data": base64.b64encode(image_data).decode("ascii"),
+                                        "storage": "base64"
+                                    })
+                        else:
+                            # Fallback to base64 if Firebase not configured
+                            with open(p, "rb") as f:
+                                images.append({
+                                    "path": os.path.relpath(p, work),
+                                    "mediaType": "image/png" if name.lower().endswith(".png") else "image/jpeg",
+                                    "data": base64.b64encode(f.read()).decode("ascii"),
+                                    "storage": "base64"
+                                })
         except Exception as e:
             # If image processing fails, continue without images
+            logging.error(f"Image processing failed: {str(e)}")
             pass
         
         return {
