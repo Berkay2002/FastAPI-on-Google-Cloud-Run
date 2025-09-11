@@ -43,13 +43,13 @@ def execute(req: ExecRequest):
         with open(code_path, "w", encoding="utf-8") as out:
             out.write(req.code)
         
-        # Run python with no site imports to reduce surface
+        # Run python (removed -S flag to allow site imports for packages)
         # Cloud Run provides outer sandboxing; avoid shell=True
         # Handle both Unix and Windows environments
         try:
             if os.name == 'posix':  # Unix/Linux (Cloud Run)
                 proc = subprocess.Popen(
-                    ["python", "-S", code_path],
+                    ["python", code_path],
                     cwd=work,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -58,7 +58,7 @@ def execute(req: ExecRequest):
                 )
             else:  # Windows
                 proc = subprocess.Popen(
-                    ["python", "-S", code_path],
+                    ["python", code_path],
                     cwd=work,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
