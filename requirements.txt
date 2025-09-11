@@ -2,6 +2,9 @@
 fastapi
 uvicorn[standard]
 
+# Firebase for image storage
+firebase-admin
+
 # core scientific stack
 numpy
 pandas
