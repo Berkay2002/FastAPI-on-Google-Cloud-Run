@@ -1,7 +1,7 @@
-# main.py
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import tempfile, os, subprocess, json, base64, textwrap, signal, sys
+import uvicorn
 
 app = FastAPI(title="Python Code Execution API", version="1.0.0")
 
@@ -38,11 +38,11 @@ def execute(req: ExecRequest):
                 # Assume text; add your own base64 detection as needed
                 with open(fp, "w", encoding="utf-8") as out:
                     out.write(f.content)
-
+        
         code_path = os.path.join(work, "main.py")
         with open(code_path, "w", encoding="utf-8") as out:
             out.write(req.code)
-
+        
         # Run python with no site imports to reduce surface
         # Cloud Run provides outer sandboxing; avoid shell=True
         # Handle both Unix and Windows environments
@@ -75,7 +75,7 @@ def execute(req: ExecRequest):
                     "images": [],
                 }
             }
-
+        
         try:
             stdout, stderr = proc.communicate(timeout=timeout / 1000)
             exit_code = proc.returncode
@@ -99,7 +99,7 @@ def execute(req: ExecRequest):
             stderr += "\n[Process terminated due to timeout]"
             exit_code = -1
             outcome = "OUTCOME_TIMEOUT"
-
+        
         # Optionally scan work dir for generated images and inline them
         images = []
         try:
@@ -116,7 +116,7 @@ def execute(req: ExecRequest):
         except Exception as e:
             # If image processing fails, continue without images
             pass
-
+        
         return {
             "executableCode": {"language": "PYTHON", "code": req.code},
             "codeExecutionResult": {
@@ -128,5 +128,16 @@ def execute(req: ExecRequest):
             }
         }
 
-# Remove the __main__ block since we're using uvicorn command in Dockerfile
-# The Dockerfile will run: uvicorn main:app --host 0.0.0.0 --port ${PORT}
+# Handle server startup programmatically for Cloud Run
+if __name__ == "__main__":
+    # Get port from environment variable (Cloud Run sets this)
+    port = int(os.environ.get("PORT", 8080))
+    
+    # Run uvicorn with proper Cloud Run configuration
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        log_level="info",
+        access_log=True
+    )
