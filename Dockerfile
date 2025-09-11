@@ -12,12 +12,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Create non-root user early to own files
 RUN useradd -m appuser
+
 WORKDIR /app
 
 # Copy dependency file first to maximize layer caching
 COPY requirements.txt /app/requirements.txt
 
-# Install Python deps
+# Install Python dependencies
 # Include your web stack and (optionally) a scientific stack for code execution
 # Adjust versions as needed in requirements.txt
 RUN pip install --upgrade --no-cache-dir pip \
@@ -33,5 +34,6 @@ USER appuser
 EXPOSE 8080
 ENV PORT=8080
 
-# Start FastAPI with Uvicorn, binding to 0.0.0.0 and Cloud Run's $PORT
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+# Start FastAPI by running main.py directly
+# This allows main.py to handle uvicorn configuration programmatically
+CMD ["python", "main.py"]
